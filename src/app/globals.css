@@ -182,59 +182,158 @@ button, input {
   outline: none;
 }
 
-/* Optimized text rendering */
-.whitespace-pre-wrap {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
 
-
-/* Shiki code block styles */
-.shiki-code-block {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+.optimized-highlight {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
   font-size: 14px;
   line-height: 1.5;
-  border-radius: 0 0 8px 8px;
-}
-
-/* Ensure proper scrolling in code blocks */
-.shiki-code-block pre {
-  margin: 0;
-  padding: 0;
-  background: transparent !important;
+  background-color: #0d1117;
+  color: #f0f6fc;
+  border-radius: 0 0 0.5rem 0.5rem;
   overflow-x: auto;
+  padding: 1rem;
+  margin: 0;
 }
 
-.shiki-code-block code {
-  background: transparent !important;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
+/* Keywords */
+.optimized-highlight .keyword {
+  color: #ff7b72;
+  font-weight: 600;
+}
+
+.optimized-highlight .type-keyword {
+  color: #ffa657;
+  font-weight: 600;
+}
+
+/* Literals and constants */
+.optimized-highlight .literal {
+  color: #79c0ff;
+  font-weight: 500;
+}
+
+/* Strings and templates */
+.optimized-highlight .string {
+  color: #a5d6ff;
+}
+
+.optimized-highlight .template {
+  color: #7ee787;
+}
+
+/* Comments and documentation */
+.optimized-highlight .comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.optimized-highlight .docstring {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Numbers */
+.optimized-highlight .number {
+  color: #79c0ff;
+  font-weight: 500;
+}
+
+/* CSS specific */
+.optimized-highlight .selector {
+  color: #7ee787;
+  font-weight: 500;
+}
+
+.optimized-highlight .property {
+  color: #79c0ff;
+}
+
+.optimized-highlight .value {
+  color: #a5d6ff;
+}
+
+/* HTML specific */
+.optimized-highlight .tag {
+  color: #7ee787;
+}
+
+.optimized-highlight .attr-name {
+  color: #79c0ff;
+}
+
+.optimized-highlight .attr-value {
+  color: #a5d6ff;
+}
+
+/* JSON specific */
+.optimized-highlight .json-key {
+  color: #79c0ff;
+  font-weight: 500;
+}
+
+/* Fallback highlighting for basic patterns */
+.fallback-highlight {
+  background-color: #0d1117;
+  color: #f0f6fc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Inline code styling */
+.inline-highlight {
+  background: rgba(110, 118, 129, 0.1);
   color: inherit;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.9em;
 }
 
-/* Custom scrollbar for code blocks */
-.shiki-code-block::-webkit-scrollbar {
-  height: 8px;
+/* Performance indicators (dev mode only) */
+.syntax-perf-indicator {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 8px;
 }
 
-.shiki-code-block::-webkit-scrollbar-track {
-  background: #1f2937;
-  border-radius: 4px;
+.syntax-perf-fast { color: #22c55e; }
+.syntax-perf-medium { color: #eab308; }
+.syntax-perf-slow { color: #ef4444; }
+
+/* Animation for highlighting transitions */
+@keyframes highlight-fade-in {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
 }
 
-.shiki-code-block::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 4px;
+.optimized-highlight {
+  animation: highlight-fade-in 0.15s ease-out;
 }
 
-.shiki-code-block::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* Responsive code blocks */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .shiki-code-block {
+  .optimized-highlight {
     font-size: 13px;
+    padding: 0.75rem;
   }
 }
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .optimized-highlight .keyword { color: #ff9999; }
+  .optimized-highlight .string { color: #99ccff; }
+  .optimized-highlight .comment { color: #cccccc; }
+  .optimized-highlight .number { color: #99ddff; }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .optimized-highlight {
+    animation: none;
+  }
+}
+

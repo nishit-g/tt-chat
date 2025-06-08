@@ -40,6 +40,8 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
   const { conversations, createConversation } = useLocalStorage();
   const { messages: localMessages, addMessage } = useMessages(currentConversation);
 
@@ -52,14 +54,19 @@ export default function ChatPage() {
     stop,
     reload,
     setMessages,
-    error
+    error,
+    setInput
   } = useChat({
     api: '/api/chat',
     body: { model: selectedModel },
     onFinish: async (message) => {
       // Only save assistant messages to avoid duplicates
       if (currentConversation && message.role === 'assistant') {
-        await addMessage(message.content, 'assistant', selectedModel);
+        try {
+          await addMessage(message.content, 'assistant', selectedModel);
+        } catch (error) {
+          console.error('Failed to save assistant message:', error);
+        }
       }
     },
     onError: (error) => {
@@ -95,6 +102,12 @@ export default function ChatPage() {
       const id = await createConversation(title, selectedModel);
       setCurrentConversation(id);
       setMessages([]);
+
+      // Focus input after creating conversation
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+
       toast.success('New conversation started');
     } catch (error) {
       console.error('Failed to create conversation:', error);
@@ -109,34 +122,50 @@ export default function ChatPage() {
     }
   }, [isMobile]);
 
-  // Enhanced submit to save user message and prevent duplicates
+  // Enhanced submit with better error handling
   const enhancedHandleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     const messageContent = input.trim();
-    if (!messageContent) return;
+    if (!messageContent) {
+      toast.error('Please enter a message');
+      return;
+    }
 
     try {
       // Create conversation if needed
       let conversationId = currentConversation;
       if (!conversationId) {
+        console.log('Creating new conversation...');
         const title = messageContent.length > 30 ? messageContent.substring(0, 30) + '...' : messageContent;
         conversationId = await createConversation(title, selectedModel);
         setCurrentConversation(conversationId);
+        console.log('Created conversation:', conversationId);
       }
 
       // Save user message to local storage BEFORE calling handleSubmit
       if (conversationId) {
+        console.log('Saving user message to conversation:', conversationId);
         await addMessage(messageContent, 'user');
+      } else {
+        throw new Error('Failed to create or select conversation');
       }
 
       // Now call the AI
       handleSubmit(e);
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to send message');
+      toast.error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [currentConversation, input, createConversation, selectedModel, addMessage, handleSubmit]);
+
+  // Handle suggestion clicks
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setInput(suggestion);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, [setInput]);
 
   // Mobile responsiveness
   useEffect(() => {
@@ -332,16 +361,7 @@ export default function ChatPage() {
                     ].map(suggestion => (
                       <button
                         key={suggestion}
-                        onClick={() => {
-                          // Set input value and focus
-                          const event = new Event('input', { bubbles: true });
-                          const input = document.querySelector('textarea') as HTMLTextAreaElement;
-                          if (input) {
-                            input.value = suggestion;
-                            input.dispatchEvent(event);
-                            input.focus();
-                          }
-                        }}
+                        onClick={() => handleSuggestionClick(suggestion)}
                         className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors"
                       >
                         {suggestion}
@@ -391,6 +411,12 @@ export default function ChatPage() {
                 <div className="text-sm text-red-600 dark:text-red-400">
                   ⚠️ Error: {error.message}
                 </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-xs text-red-500 hover:text-red-700 mt-1"
+                >
+                  Click to refresh page
+                </button>
               </div>
             )}
           </div>
@@ -401,6 +427,7 @@ export default function ChatPage() {
           <div className="max-w-4xl mx-auto">
             <form onSubmit={enhancedHandleSubmit} className="flex gap-2">
               <textarea
+                ref={inputRef}
                 value={input}
                 onChange={handleInputChange}
                 placeholder={`Message ${currentModel?.name}...`}
@@ -448,6 +475,11 @@ export default function ChatPage() {
 
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
               T3 Chat • Local-first • {input.length}/2000 characters
+              {currentConversation && (
+                <span className="ml-2 text-green-600">
+                  • Conversation active
+                </span>
+              )}
             </div>
           </div>
         </footer>
