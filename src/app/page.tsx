@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from 'ai/react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Send, Square, RotateCcw, Plus, MessageSquare, Menu, X } from 'lucide-react';
 import { useLocalStorage, useMessages } from '@/components/chat/local-storage-provider';
 import { toast } from 'sonner';
@@ -32,14 +32,16 @@ export default function ChatPage() {
     stop,
     reload,
     setMessages
+
   } = useChat({
     api: '/api/chat',
     body: { model: selectedModel },
     onFinish: async (message) => {
-      // Save assistant message to local storage
-      if (currentConversation) {
+      // ONLY save assistant messages (user messages already saved above)
+      if (currentConversation && message.role === 'assistant') {
         await addMessage(message.content, 'assistant', selectedModel);
       }
+
     }
   });
 
@@ -81,23 +83,29 @@ export default function ChatPage() {
     }
   }, [isMobile]);
 
-  // Enhanced submit to save user message
+  // FIXED: Enhanced submit to prevent duplicates
   const enhancedHandleSubmit = useCallback(async (e: React.FormEvent) => {
+
     e.preventDefault();
 
-    // If no conversation, create one
-    if (!currentConversation && input.trim()) {
-      const title = input.length > 30 ? input.substring(0, 30) + '...' : input;
-      const id = await createConversation(title, selectedModel);
-      setCurrentConversation(id);
+
+    const messageContent = input.trim();
+    if (!messageContent) return;
+
+    // Create conversation if needed
+    let conversationId = currentConversation;
+    if (!conversationId) {
+      const title = messageContent.length > 30 ? messageContent.substring(0, 30) + '...' : messageContent;
+      conversationId = await createConversation(title, selectedModel);
+      setCurrentConversation(conversationId);
     }
 
-    // Save user message to local storage
-    if (currentConversation && input.trim()) {
-      await addMessage(input, 'user');
+    // Save user message to local storage FIRST
+    if (conversationId) {
+      await addMessage(messageContent, 'user');
     }
 
-    // Handle chat submission
+    // THEN call the AI (this will add the message to the UI automatically)
     handleSubmit(e);
   }, [currentConversation, input, createConversation, selectedModel, addMessage, handleSubmit]);
 
