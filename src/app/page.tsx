@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Send, Square, RotateCcw, Plus, MessageSquare, Menu, X } from 'lucide-react';
 import { useLocalStorage, useMessages } from '@/components/chat/local-storage-provider';
 import { toast } from 'sonner';
+import { MessageRenderer } from '../components/chat/message-renderer';
 
 const MODELS = [
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '⚡' },
@@ -291,11 +292,10 @@ export default function ChatPage() {
                   <div className="text-xs opacity-70 mb-1">
                     {message.role === 'user' ? 'You' : selectedModel.split('/')[1]}
                   </div>
-                  <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                  <MessageRenderer content={message.content} role={message.role} />
                 </div>
               </div>
             ))}
-
             {isLoading && (
               <div className="flex gap-3">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3">

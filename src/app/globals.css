@@ -187,3 +187,54 @@ button, input {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+
+/* Shiki code block styles */
+.shiki-code-block {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Ensure proper scrolling in code blocks */
+.shiki-code-block pre {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow-x: auto;
+}
+
+.shiki-code-block code {
+  background: transparent !important;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Custom scrollbar for code blocks */
+.shiki-code-block::-webkit-scrollbar {
+  height: 8px;
+}
+
+.shiki-code-block::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 4px;
+}
+
+.shiki-code-block::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.shiki-code-block::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Responsive code blocks */
+@media (max-width: 768px) {
+  .shiki-code-block {
+    font-size: 13px;
+  }
+}
