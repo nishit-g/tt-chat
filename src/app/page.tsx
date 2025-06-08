@@ -2,16 +2,36 @@
 
 import { useChat } from 'ai/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Send, Square, RotateCcw, Plus, MessageSquare, Menu, X } from 'lucide-react';
+import { Send, Square, RotateCcw, Plus, MessageSquare, Menu, X, Zap } from 'lucide-react';
 import { useLocalStorage, useMessages } from '@/components/chat/local-storage-provider';
 import { toast } from 'sonner';
 import { MessageRenderer } from '../components/chat/message-renderer';
 
 const MODELS = [
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '⚡' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', icon: '🤖' },
-  { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Claude 3.5', icon: '🧠' },
-  { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0', icon: '💎' },
+  {
+    id: 'openai/gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    icon: '⚡',
+    description: 'Fastest responses'
+  },
+  {
+    id: 'openai/gpt-4o',
+    name: 'GPT-4o',
+    icon: '🤖',
+    description: 'Best overall quality'
+  },
+  {
+    id: 'anthropic/claude-3-5-sonnet-20241022',
+    name: 'Claude 3.5',
+    icon: '🧠',
+    description: 'Deep reasoning'
+  },
+  {
+    id: 'google/gemini-2.0-flash-exp',
+    name: 'Gemini 2.0',
+    icon: '💎',
+    description: 'Multimodal AI'
+  },
 ];
 
 export default function ChatPage() {
@@ -31,17 +51,20 @@ export default function ChatPage() {
     isLoading,
     stop,
     reload,
-    setMessages
-
+    setMessages,
+    error
   } = useChat({
     api: '/api/chat',
     body: { model: selectedModel },
     onFinish: async (message) => {
-      // ONLY save assistant messages (user messages already saved above)
+      // Only save assistant messages to avoid duplicates
       if (currentConversation && message.role === 'assistant') {
         await addMessage(message.content, 'assistant', selectedModel);
       }
-
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+      toast.error(`Error: ${error.message}`);
     }
   });
 
@@ -62,6 +85,8 @@ export default function ChatPage() {
 
   const onModelChange = useCallback((model: string) => {
     setSelectedModel(model);
+    const modelInfo = MODELS.find(m => m.id === model);
+    toast.success(`Switched to ${modelInfo?.name}`);
   }, []);
 
   const startNewChat = useCallback(async () => {
@@ -72,6 +97,7 @@ export default function ChatPage() {
       setMessages([]);
       toast.success('New conversation started');
     } catch (error) {
+      console.error('Failed to create conversation:', error);
       toast.error('Failed to create conversation');
     }
   }, [createConversation, selectedModel, setMessages]);
@@ -83,30 +109,33 @@ export default function ChatPage() {
     }
   }, [isMobile]);
 
-  // FIXED: Enhanced submit to prevent duplicates
+  // Enhanced submit to save user message and prevent duplicates
   const enhancedHandleSubmit = useCallback(async (e: React.FormEvent) => {
-
     e.preventDefault();
-
 
     const messageContent = input.trim();
     if (!messageContent) return;
 
-    // Create conversation if needed
-    let conversationId = currentConversation;
-    if (!conversationId) {
-      const title = messageContent.length > 30 ? messageContent.substring(0, 30) + '...' : messageContent;
-      conversationId = await createConversation(title, selectedModel);
-      setCurrentConversation(conversationId);
-    }
+    try {
+      // Create conversation if needed
+      let conversationId = currentConversation;
+      if (!conversationId) {
+        const title = messageContent.length > 30 ? messageContent.substring(0, 30) + '...' : messageContent;
+        conversationId = await createConversation(title, selectedModel);
+        setCurrentConversation(conversationId);
+      }
 
-    // Save user message to local storage FIRST
-    if (conversationId) {
-      await addMessage(messageContent, 'user');
-    }
+      // Save user message to local storage BEFORE calling handleSubmit
+      if (conversationId) {
+        await addMessage(messageContent, 'user');
+      }
 
-    // THEN call the AI (this will add the message to the UI automatically)
-    handleSubmit(e);
+      // Now call the AI
+      handleSubmit(e);
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error('Failed to send message');
+    }
   }, [currentConversation, input, createConversation, selectedModel, addMessage, handleSubmit]);
 
   // Mobile responsiveness
@@ -137,6 +166,7 @@ export default function ChatPage() {
   };
 
   const currentConversationData = conversations.find(c => c.id === currentConversation);
+  const currentModel = MODELS.find(m => m.id === selectedModel);
 
   return (
     <div className="h-screen flex bg-white dark:bg-gray-950">
@@ -157,7 +187,7 @@ export default function ChatPage() {
         <div className="p-4 border-b border-gray-200 dark:border-gray-800">
           <button
             onClick={startNewChat}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             <Plus size={16} />
             <span className="text-sm font-medium">New Chat</span>
@@ -173,7 +203,7 @@ export default function ChatPage() {
                 onClick={() => selectConversation(conversation.id)}
                 className={`w-full text-left p-3 rounded-lg transition-colors mb-1 ${
                   currentConversation === conversation.id
-                    ? 'bg-gray-200 dark:bg-gray-700'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
@@ -207,9 +237,12 @@ export default function ChatPage() {
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            T3 Chat Clone • Local-First
+            T3 Chat • AI SDK Powered
             {process.env.NODE_ENV === 'development' && (
-              <div className="text-green-600 mt-1">🗄️ Dexie Active</div>
+              <div className="text-green-600 mt-1 flex items-center justify-center gap-1">
+                <Zap size={12} />
+                Dev Mode
+              </div>
             )}
           </div>
         </div>
@@ -233,6 +266,13 @@ export default function ChatPage() {
                 <span className="font-medium">
                   {currentConversationData?.title || 'New Chat'}
                 </span>
+
+                {isLoading && (
+                  <div className="flex items-center gap-1 text-blue-500">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm">Thinking...</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -242,26 +282,26 @@ export default function ChatPage() {
                 <button
                   key={model.id}
                   onClick={() => onModelChange(model.id)}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                  className={`px-3 py-1 text-sm rounded-lg transition-all duration-200 ${
                     selectedModel === model.id
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
                   }`}
+                  title={model.description}
                 >
-                  {model.icon} {model.name}
+                  <div className="flex items-center gap-1">
+                    <span>{model.icon}</span>
+                    <span className="hidden sm:inline">{model.name}</span>
+                  </div>
                 </button>
               ))}
             </div>
 
-            {/* Performance Indicators */}
+            {/* Development Indicator */}
             {process.env.NODE_ENV === 'development' && (
-              <div className="flex gap-2">
-                <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                  🚀 React Scan
-                </div>
-                <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                  🗄️ Local-First
-                </div>
+              <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1">
+                <Zap size={12} />
+                Dev Mode
               </div>
             )}
           </div>
@@ -271,17 +311,44 @@ export default function ChatPage() {
         <main className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 && (
             <div className="h-full flex items-center justify-center">
-              <div className="text-center text-gray-500 dark:text-gray-400">
-                <div className="text-6xl mb-4">💬</div>
+              <div className="text-center text-gray-500 dark:text-gray-400 max-w-md">
+                <div className="text-6xl mb-4">{currentModel?.icon || '💬'}</div>
                 <h2 className="text-xl font-semibold mb-2">
-                  {currentConversation ? 'Continue your conversation' : 'Start a new conversation'}
+                  Ready to chat with {currentModel?.name}
                 </h2>
-                <p className="text-sm">
-                  Blazingly fast AI chat with {MODELS.find(m => m.id === selectedModel)?.icon} {MODELS.find(m => m.id === selectedModel)?.name}
+                <p className="text-sm mb-4">
+                  {currentModel?.description}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  ⚡ Local-first • Zero latency • Offline capable
-                </p>
+
+                {/* Quick Start Examples */}
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">Try asking:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {[
+                      'Explain React hooks',
+                      'Write a Python function',
+                      'Debug this code',
+                      'Best practices'
+                    ].map(suggestion => (
+                      <button
+                        key={suggestion}
+                        onClick={() => {
+                          // Set input value and focus
+                          const event = new Event('input', { bubbles: true });
+                          const input = document.querySelector('textarea') as HTMLTextAreaElement;
+                          if (input) {
+                            input.value = suggestion;
+                            input.dispatchEvent(event);
+                            input.focus();
+                          }
+                        }}
+                        className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -292,27 +359,37 @@ export default function ChatPage() {
                 key={message.id}
                 className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[70%] rounded-lg px-4 py-3 ${
+                <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
                   message.role === 'user'
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                 }`}>
-                  <div className="text-xs opacity-70 mb-1">
-                    {message.role === 'user' ? 'You' : selectedModel.split('/')[1]}
+                  <div className="text-xs opacity-70 mb-2">
+                    {message.role === 'user' ? 'You' : currentModel?.name}
                   </div>
                   <MessageRenderer content={message.content} role={message.role} />
                 </div>
               </div>
             ))}
+
             {isLoading && (
               <div className="flex gap-3">
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3">
-                  <div className="text-xs opacity-70 mb-1">{selectedModel.split('/')[1]}</div>
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3">
+                  <div className="text-xs opacity-70 mb-2">{currentModel?.name}</div>
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-100"></div>
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-200"></div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <div className="text-sm text-red-600 dark:text-red-400">
+                  ⚠️ Error: {error.message}
                 </div>
               </div>
             )}
@@ -323,12 +400,18 @@ export default function ChatPage() {
         <footer className="border-t border-gray-200 dark:border-gray-800 p-4">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={enhancedHandleSubmit} className="flex gap-2">
-              <input
+              <textarea
                 value={input}
                 onChange={handleInputChange}
-                placeholder={`Message ${MODELS.find(m => m.id === selectedModel)?.name}...`}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                autoFocus
+                placeholder={`Message ${currentModel?.name}...`}
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[50px] max-h-32"
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    enhancedHandleSubmit(e as any);
+                  }
+                }}
               />
 
               <div className="flex gap-1">
@@ -336,7 +419,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={stop}
-                    className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    className="px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
                   >
                     <Square size={16} />
                   </button>
@@ -345,7 +428,7 @@ export default function ChatPage() {
                     <button
                       type="submit"
                       disabled={!input.trim()}
-                      className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Send size={16} />
                     </button>
@@ -353,7 +436,7 @@ export default function ChatPage() {
                       <button
                         type="button"
                         onClick={reload}
-                        className="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors"
                       >
                         <RotateCcw size={16} />
                       </button>
@@ -364,7 +447,7 @@ export default function ChatPage() {
             </form>
 
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-              T3 Chat • Local-first architecture • Data stored locally
+              T3 Chat • Local-first • {input.length}/2000 characters
             </div>
           </div>
         </footer>
